@@ -1,0 +1,247 @@
+<html>
+<head>
+<script>
+var giNumNameChars;
+var giNumPlayersInTeam;
+var gsRedTeamNames;
+var gsBlueTeamNames;
+
+var giNumGames;
+var gsGameSeqRedPlayerNames;
+var gsGameSeqBluePlayerNames;
+
+function clearDivResult()
+{
+    document.getElementById("divResult").innerHTML = "";
+}
+
+function setDivResult()
+{
+    var sHTML = "<div style=\"font-size: 20pt\">";
+    for (var i = 0; i < giNumGames; ++i)
+    {
+        sHTML += (i+1) + ". <font color=\"red\">" + gsGameSeqRedPlayerNames.substr(i * giNumNameChars, giNumNameChars) + "</font> vs. <font color=\"blue\">" + gsGameSeqBluePlayerNames.substr(i * giNumNameChars, giNumNameChars) + "</font><br />";
+    }
+    sHTML += "</div><br />";
+
+    document.getElementById("divResult").innerHTML = sHTML;
+}
+
+function clearDivStep2()
+{
+    document.getElementById("divStep2").innerHTML = "";
+}
+
+function setDivStep2()
+{
+    var sHTML = "<div style=\"font-size: 20pt\"><font color=\"red\">";
+    for (var i = 0; i < giNumPlayersInTeam; ++i)
+    {
+        sHTML += gsRedTeamNames.substr(i * giNumNameChars, giNumNameChars);
+        if (giNumPlayersInTeam-1 != i)
+            sHTML += " ";
+    }
+    sHTML += "</font><br />&nbsp;&nbsp;vs.<br /> <font color=\"blue\">";
+    for (var i = 0; i < giNumPlayersInTeam; ++i)
+    {
+        sHTML += gsBlueTeamNames.substr(i * giNumNameChars, giNumNameChars);
+        if (giNumPlayersInTeam-1 != i)
+            sHTML += " ";
+    }
+    sHTML += "</font></div><br /><div>경기 수를 입력하세요:<br /><br /><select id=\"selectNumGames\" style=\"font-size: 20pt\"><option value=\"1\">&nbsp;&nbsp;1&nbsp;&nbsp;</option><option value=\"2\">&nbsp;&nbsp;2&nbsp;&nbsp;</option><option value=\"3\">&nbsp;&nbsp;3&nbsp;&nbsp;</option><option value=\"4\">&nbsp;&nbsp;4&nbsp;&nbsp;</option><option value=\"5\" selected>&nbsp;&nbsp;5&nbsp;&nbsp;</option><option value=\"6\">&nbsp;&nbsp;6&nbsp;&nbsp;</option><option value=\"7\">&nbsp;&nbsp;7&nbsp;&nbsp;</option><option value=\"8\">&nbsp;&nbsp;8&nbsp;&nbsp;</option><option value=\"9\">&nbsp;&nbsp;9&nbsp;&nbsp;</option><option value=\"9\">&nbsp;&nbsp;9&nbsp;&nbsp;</option><option value=\"10\">&nbsp;&nbsp;10&nbsp;&nbsp;</option><option value=\"11\">&nbsp;&nbsp;11&nbsp;&nbsp;</option><option value=\"12\">&nbsp;&nbsp;12&nbsp;&nbsp;</option><option value=\"13\">&nbsp;&nbsp;13&nbsp;&nbsp;</option></select><br /><input type=\"button\" value=\"대진표 만들기\" onclick=\"arrangeGames();\" /><br /><br />생성 규칙:<br />&nbsp;&nbsp;경기 수가 팀 참여자 수보다 작거나 같으면 참여자는 최대 1 경기만 하게 대진표가 만들어집니다.<br />&nbsp;&nbsp;팀 참여자 수보다 경기 수가 많으면 반복적으로 대진표를 생성합니다. 그러니까 예를 들어 팀 참여자 수가 5 명이고 경기 수가 11 개라면, 5:5 대진 2 세트를 만든 후 5 명 중 1 명을 뽑아 마지막 경기를 생성합니다.<br />&nbsp;&nbsp;언제든지 STEP-2 를 다시 진행할 수 있다는 사실을 잊지 마세요.<br /><br /></div>";
+    <!-- U/I 에서는 편의상 1 경기부터 9 경기끼자만 지원하지만, 실제 구현은 경기 수에 제한이 없으므로 필요시 눈치껏 option 부분을 적절히 수정하면 됩니다. (option 의 value 값도 같이 수정해야 합니다.) -->
+
+    //alert(sHTML);
+
+    document.getElementById("divStep2").innerHTML = sHTML;
+}
+
+function arrangeTeams()
+{
+    clearDivResult();
+    clearDivStep2();
+
+    var sAllNamesWithPossibleHint = document.getElementById("inputAllNamesWithPossibleHint").value.trim();
+    if (sAllNamesWithPossibleHint.length < 1)
+    {
+        alert("에러: 입력된 참여자 이름이 없습니다!");
+        return;
+    }
+
+    // 이름 글자 수 추정
+    var iFirstHint = parseInt(sAllNamesWithPossibleHint.substr(0, 1));
+    var sAllNames;
+    if (1 <= iFirstHint && iFirstHint <= 9)
+    {
+        giNumNameChars = iFirstHint;
+        sAllNames = sAllNamesWithPossibleHint.substr(1, sAllNamesWithPossibleHint.length-1);
+    }
+    else
+    {
+        var iLastHint = parseInt(sAllNamesWithPossibleHint.substr(sAllNamesWithPossibleHint.length-1, 1));
+        if (1 <= iLastHint && iLastHint <= 9)
+        {
+            giNumNameChars = iLastHint;
+            sAllNames = sAllNamesWithPossibleHint.substr(0, sAllNamesWithPossibleHint.length-1);
+        }
+        else
+        {
+            giNumNameChars = 2/*DEFAULT*/;
+            sAllNames = sAllNamesWithPossibleHint;
+        }
+    }
+
+    //alert(giNumNameChars + ", " + sAllNames);
+    if (!(1 <= giNumNameChars && giNumNameChars <= 9))
+    {
+        alert("에러: 이름 글자 수가 이상합니다! (" + giNumNameChars + ")");
+        return;
+    }
+    if (0 != sAllNames.length % giNumNameChars)
+    {
+        alert("에러: 입력된 참여자 이름 내용이 이름 글자 수로 나누어 떨어지지 않습니다!");
+        return;
+    }
+
+    // 팀당 선수 숫자 계산
+    if (0 != sAllNames.length / giNumNameChars % 2)
+    {
+        alert("에러: 참여자 숫자가 두 팀으로 나누어 떨어지지 않습니다!");
+        return;
+    }
+
+    giNumPlayersInTeam = sAllNames.length / giNumNameChars / 2;
+    //alert(giNumPlayersInTeam);
+
+    // 팀 나누기
+    gsRedTeamNames = "";
+    gsBlueTeamNames = "";
+
+    var iNumSelPlayersForRedTeam = 0;
+    var iNumSelPlayersForBlueTeam = 0;
+    for (var i = 0; i < giNumPlayersInTeam * 2; ++i)
+    {
+        var ishallSelectForRed;
+
+        if (iNumSelPlayersForRedTeam == giNumPlayersInTeam)
+            ishallSelectForRed = 0;
+        else if (iNumSelPlayersForBlueTeam == giNumPlayersInTeam)
+            ishallSelectForRed = 1;
+        else
+            ishallSelectForRed = ((Math.random() < 0.5) ? 1 : 0); // 동전 던지기로 선택
+
+        //alert(ishallSelectForRed);
+  
+        if (0 != ishallSelectForRed)
+        {
+            gsRedTeamNames += sAllNames.substr(i * giNumNameChars, giNumNameChars);
+            ++iNumSelPlayersForRedTeam;
+        }
+        else
+        {
+            gsBlueTeamNames += sAllNames.substr(i * giNumNameChars, giNumNameChars);
+            ++iNumSelPlayersForBlueTeam;
+        }
+    }
+
+    //alert(gsRedTeamNames + " vs. " + gsBlueTeamNames);
+
+    setDivStep2();
+}
+
+function removeTheChosen(asNames, aiChoice)
+{
+    var sChosen = asNames.substr(aiChoice * giNumNameChars, giNumNameChars);
+
+    if (0 == aiChoice)
+        asNames = asNames.substring(giNumNameChars);
+    else if (asNames.length/giNumNameChars == aiChoice+1)
+        asNames = asNames.substring(0, asNames.length-giNumNameChars);
+    else
+        asNames = asNames.substring(0, aiChoice * giNumNameChars) + asNames.substring((aiChoice+1) * giNumNameChars);
+
+    return { a: sChosen, b: asNames };
+}
+
+function arrangeGames()
+{
+    clearDivResult();
+
+    giNumGames = parseInt(document.getElementById("selectNumGames").value);
+    if (!(1 <= giNumGames && giNumGames <= 99/*에러 체크를 위해 현실적인 값으로 상한선 설정함, 다른 값으로 변경 가능*/))
+    {
+        alert("에러: 경기 수가 이상합니다! (" + giNumGames + ")");
+        return;
+    }
+
+    gsGameSeqRedPlayerNames = "";
+    gsGameSeqBluePlayerNames = "";
+
+    var iCurr = 0;
+    while (iCurr < giNumGames)
+    {
+        var sCurrRedTeamNames = gsRedTeamNames;
+        var sCurrBlueTeamNames = gsBlueTeamNames;
+
+        for (var i = 0; i < giNumPlayersInTeam && iCurr < giNumGames; ++i, ++iCurr)
+        {
+            if (sCurrRedTeamNames.length == giNumNameChars)
+            {
+                gsGameSeqRedPlayerNames += sCurrRedTeamNames;
+                gsGameSeqBluePlayerNames += sCurrBlueTeamNames;
+            }
+            else
+            {
+                var iRedChoice = Math.floor(Math.random() * (giNumPlayersInTeam - i));
+                var iBlueChoice = Math.floor(Math.random() * (giNumPlayersInTeam - i));
+
+                var grpRedResult = removeTheChosen(sCurrRedTeamNames, iRedChoice);
+                gsGameSeqRedPlayerNames += grpRedResult.a;
+                sCurrRedTeamNames = grpRedResult.b;
+
+                var grpBlueResult = removeTheChosen(sCurrBlueTeamNames, iBlueChoice);
+                gsGameSeqBluePlayerNames += grpBlueResult.a;
+                sCurrBlueTeamNames = grpBlueResult.b;
+            }
+        }
+    }
+
+    setDivResult();
+}
+</script>
+</head>
+<body>
+<h1>랜덤 대진표 만들기</h1>
+제작자: <i>ndd247 (ndd247blog.wordpress.com)</i><br /><!-- 정직하지 않은 용도를 제외한 임의의 목적으로 본 파일을 자유롭게 수정하여 사용할 수 있으나, 단 제작자 표시 부분과 이 주석을 포함하는 줄을 삭제하거나 혹은 제작자 표시를 웹브라우저에서 표시되지 않도록 수정해서는 안됩니다. -->
+&nbsp;&nbsp;(version 1.0.0 - 기본 기능 완성)
+<hr />
+<h3>[ RESULT ]</h3>
+<div id="divResult">
+</div>
+<hr />
+<h3>[ STEP-2 ]</h3>
+<div id="divStep2">
+</div>
+<hr />
+<h3>[ STEP-1 ]</h3>
+<div id="divStep1">
+참여자 이름 글자 수를 시작 혹은 끝으로 해서 모든 참여자 이름을 붙여서 입력하세요:<br />
+&nbsp;&nbsp;이름 글자 수는 1 글자에서 9 글자까지 지원합니다.<br />
+&nbsp;&nbsp;이름 글자 수를 생략할 경우 2 글자 이름으로 해석합니다.<br />
+&nbsp;&nbsp;HTML 에 혼란을 일으킬 수 있는 특수 기호(&lt; 나 &gt; 등등)를 입력하면 동작을 보장할 수 없습니다.<br />
+&nbsp;&nbsp;참여자 이름 양쪽 끝의 공백은 무시하므로, 글자 수를 맞추기 위한 공백 사용은 가능하나 그 위치에 유의해야 합니다.<br />
+<br />
+<input id="inputAllNamesWithPossibleHint" style="width: 100%; font-size: 20pt" type="text" /><br />
+<input type="button" value="팀 나누기" onclick="arrangeTeams();" /><br />
+<br />
+옳은 예들: (존경의 의미를 담아 예로 든 것이므로 양해 부탁드리겠습니다.)<br />
+&nbsp;&nbsp;1갓짭진택벽윤도홍호짱<br />
+&nbsp;&nbsp;갓짭진택벽윤도홍호짱1<br />
+&nbsp;&nbsp;영호상현영진택용민철윤철재욱홍규재호일장<br />
+&nbsp;&nbsp;2영호상현영진택용민철윤철재욱홍규재호일장<br />
+&nbsp;&nbsp;영호상현영진택용민철윤철재욱홍규재호일장2<br />
+&nbsp;&nbsp;3이영호박상현유영진김택용김민철장윤철도재욱임홍규이재호조일장<br />
+&nbsp;&nbsp;이영호박상현유영진김택용김민철장윤철도재욱임홍규이재호조일장3<br />
+</div>
+</body>
+</html>
